@@ -326,9 +326,601 @@ void test()
 }
 ```
 
+#### 4.2.2 构造函数的分类及调用
 
+两种分类方式：
+
+​	按参数：有参和无参(默认)
+
+​	按类型： 普通和拷贝
+
+```c++
+class Person;
+Person(const Person &p);//加const,同时以引用的方式，拷贝构造
+//将传入的对象所有属性，拷贝到当前对象
+```
+
+调用：
+
+1. 括号法
+
+   `Person p;`//默认构造函数
+
+   `Person p1(10);`//有参构造函数
+
+   `Person p2(p1);`//拷贝构造函数
+
+   注意事项：调用默认构造函数时，不要加()
+
+   `Person p();`//因为编译器会认为是一个函数的声明，不会认为在创建对象
+
+2. 显示法
+
+   `Person p = Person(10);`
+
+   `Person p1 = Person(p);`
+
+   `Person(10)`是一个匿名对象，当前行执行结束，系统会立即回收
+
+   不要利用拷贝构造函数来初始化匿名对象，编译器会认为`Person(p3) === Person p3`
+
+3. 隐式转换法
+
+   `Person p = 10;`//相当于`Person p = Person p(10)`
+
+   `Person p = p1;`//相当于拷贝，`Person p = Person(p1);`
+
+#### 4.2.3 拷贝构造函数的调用时机
+
+- 使用一个已经创建完毕的对象来初始化一个新对象
+
+- 值传递的方式给函数参数传值 
+
+  ```c++
+  void do(Person p){}
+  void test()
+  {
+      Person p;
+      do(p);//此时值传递会复制一个副本，所以会调用拷贝
+  }
+  ```
+
+- 值方式来返回局部对象
+
+  ```c++
+  Person do()
+  {
+      Person p1;
+      return p1;
+  }
+  void test()
+  {
+      Person p = do();
+  }
+  ```
+
+#### 4.2.4 构造函数调用规则
+
+c++编译器至少给一个类添加3个函数：
+
+1. 默认构造（空实现）
+2. 默认析构（空实现）
+3. 默认拷贝构造（值拷贝）
+
+构造函数调用规则：
+
+- 如果用户定义有参构造，则不提供默认无参构造，但会提供默认拷贝
+- 如果用户定义拷贝构造，则不提供其他构造函数
+
+#### 4.2.5 深拷贝和浅拷贝
+
+浅拷贝：简单的赋值拷贝操作，主要是编译器默认的拷贝构造提供
+
+深拷贝：在堆区重新申请空间，进行拷贝操作
+
+```c++
+//拷贝构造函数 
+class Person
+{
+public:
+    //拷贝构造
+    Person(const Person &p)
+    {
+        m_Age = p.m_Age;
+        m_Height = new int(*p.m_Height);
+    }
+//析构函数
+    ~Person()
+    {
+        if(m_Height != null)
+        {
+            delete m_Height;
+            m_Height = null;
+        }
+    }
+public:
+    int m_Age;
+    int * m_Height;s
+}
+//总结：如果属性有在堆区开辟的，一定要自己提供拷贝构造，否则容易浅拷贝
+```
+
+#### 4.2.6初始化列表
+
+**作用：**c++提供了初始化列表语法，用来初始化属性
+
+**语法**：`构造函数（）: 属性1(值1),属性2(值2)...`
+
+```c+
+Person() :m_A(10),m_B(20),m_C(30){}
+Person(int a, int b, int c) :m_A(a), m_B(b), m_C(c){}
+```
+
+#### 4.2.7 类对象作为类成员
+
+称为对象成员
+
+```c++
+class A{}
+class B{
+    A a;
+}
+
+```
+
+构造时先构造类中的成员类，再调用自身类构造，析构时相反
+
+#### 4.2.8 静态成员
+
+静态成员就是在成员变量和成员函数前加上关键字static
+
+- 静态成员变量
+
+  - 所有对象共享同一份数据
+  - 在编译阶段分配内存
+  - 类内声明，类外初始化
+
+  ```c++
+  class Person{
+  public:
+      static int m_A;//类内声明
+  private:
+      static int m_B;//也有访问权限，类外访问不到私有的
+  }
+  int Person::m_A = 100;//类外初始化，双冒号
+  //有两种访问方式：
+  //通过对象进行访问 p.m_a
+  //通过类名进行访问 Person::m_a
+  ```
+
+- 静态成员函数
+
+  - 所有对象共享同一个函数
+
+  - 静态成员函数只能访问静态成员变量
+
+    ​	也有两种访问方式，通过对象访问，也可以通过类名访问，也有访问权限
 
 ---
 
+### 4.3 c++对象模型和this指针
 
+#### 4.3.1成员变量和成员函数分开存储
+
+只有非静态成员变量才属于类的对象上
+
+空对象占用内存空间为：1
+
+c++编译器会给每个空对象也分配一个字节空间，为了区分空对象占内存位置
+
+每个空对象也应该有一个独一无二的内存地址
+
+#### 4.3.2this指针概念
+
+this指针指向被调用的成员函数所属的对象
+
+this指针是隐含在第一个非静态成员函数内的一种指针
+
+this指针不需要定义，直接使用即可
+
+1. 解决名称冲突，当形参和实参名称相同时使用
+
+   `this->age = age;`
+
+2. 返回对象本身用*this
+
+#### 4.3.3 空指针访问成员函数
+
+c++允许空指针访问
+
+如果使用到this指针，进行判断，提高代码健壮性`if(this == null){return;}`
+
+#### 4.3.4 const修饰成员函数 
+
+**常函数**
+
+- 成员函数加const后称为常函数
+- 常函数内不可以修改成员属性
+- 在成员属性声明时加关键字mutable后，在常函数中依然可以修改
+
+```c++
+class Person
+{
+public:
+    //this指针本质是指针常量，指针指向不可以修改
+    //在成员函数后面加const,修饰的是this指针，值也不可以修改
+    void showPerson() const
+    {
+        //this->m_A =100;//error const修饰不可修改
+        //this = null; //error this 指针不可以修改指针的指向
+        this->m_B = 100; //可以修改
+    }
+    int m_A;
+    mutable int m_B;//加Mutable关键字，可以修改
+}
+```
+
+**常对象**
+
+`const Person p;`//在对象前加const，变为常对象
+
+常对象只能调用常函数 ，不可以调用普通成员函数 ，因为普通成员函数可以修改成员属性
+
+---
+
+### 4.4 友元
+
+友元关键字 **friend**，可以访问私有成员
+
+#### 4.4.1 全局函数做友元
+
+```c++
+class Building
+{
+    friend void goodGay(Building *building);//goodGay可以访问building中的私有成员
+public:
+    Building()
+    {
+        m_SittingRoom = "客厅";
+        m_BedRoom = "卧室";
+    }
+    string m_SittingRoom;
+    
+private:
+    string m_BedRoom;
+}
+void goodGay(Building *building)//全局函数 
+{
+    cout << "好基友的全局函数 正在访问：" << building->m_SittingRoom << endl;
+    cout << "好基友的全局函数 正在访问：" << building->m_BedRoom << endl;
+}
+```
+
+#### 4.4.2 类做友元
+
+`friend class goodGay;`
+
+#### 4.4.3 成员函数做友元
+
+`friend void goodGay::visit();`
+
+---
+
+### 4.5 运算符重载
+
+对已有的运算符重新进行定义，赋予其另一种功能，以适应不同的数据类型
+
+对于内置数据类型，编译器知道如何进行运算
+
+#### 4.5.1 加号运算符
+
+1. 通过成员函数重载+号
+
+```c++
+class Person
+{
+public:
+    Person operator+(Person &p)
+    {
+        Person temp;
+        temp.m_a = this->m_a + p.m_a;
+        temp.m_b = this->m_b + p.m_b;
+        retrun temp;
+    }
+    int m_a;
+    int m_b;
+};
+
+void test()
+{
+    Person p1;
+    p1.m_a = 10;
+    p2.m_a = 10;
+    Person p2;
+    p2.m_a = 20;
+    p2.m_b = 20;
+    Person p3 = p1 + p2;
+    cout << "p3.m_a: " << p3.m_a << endl;
+    cout << "p3.m_b: " << p3.m_b << endl;
+}
+```
+
+2. 全局函数重载+号
+
+```c++
+Person operator+(Person &p1, Person &p2)
+{
+    Person temp;
+    temp.m_a = p1.m_a + p2.m_a;
+    temp.m_b = p1.m_b + p2.m_b;
+    retrun temp;
+}
+```
+
+```c++
+//成员函数重载本质：
+Person p3 = p1.operator+(p2);
+//全局函数重载本质：
+Person p3 = operator+(p1, p2);
+//运算符重载也可以发生函数重载
+```
+
+- 总结1：对于内置数据类型的表达式的运算符不可以发生重载
+
+- 总结2：不要滥用运算符重载
+
+#### 4.5.2 左移运算符重载
+
+作用：可以输出自定义的数据类型
+
+```c++
+class Person
+{
+public:
+//通常不会利用成员函数重载<<运算符，因为cout会在右侧
+    int m_a;
+    int m_b;
+};
+//只能利用全局函数重载左移运算符
+ostream &operator<<(ostream &cout, Person &p)//本质 operator(cout, p)，简化 cout << p
+{
+    cout << "m_a" << m_a << "m_b" << m_b;
+    return cout;
+}
+void test()
+{
+    Person p;
+    p.m_a = 10;
+    p.m_b = 10;
+    cout << p << endl;//可以直接输出对象
+}
+```
+
+总结:重载左移配合友元可以实现输出自定义数据类型
+
+#### 4.5.3 递增运算符重载
+
+作用：实现自己的整形数据 
+
+```c++
+//重载前置++
+MyInteger& operator++()//返回引用是为了一直对一个数据进行递增
+{
+    m_Num++;
+    return *this;
+}
+//后置++
+//int代表占位参数，可以用于区分前置和后置，让编译器知道是后置递增
+MyInteger operator++(int)//后置返回值
+{
+    MyInteger temp = *this;
+    m_Num++;
+    return temp;
+}
+```
+
+#### 4.5.4 赋值运算符重载
+
+c++编译器至少给一个类添加4个函数 
+
+1. 默认构造
+2. 默认析构
+3. 默认拷贝构造
+4. 赋值运算符operator=对属性进行值拷贝
+
+注意深浅拷贝的问题
+
+```c++
+Person& operator=(Person &p)//解决连等的问题
+{
+    //先判断是否有属性在堆区
+    if(m_Age != null)
+    {
+        delete m_Age;
+        m_Age = null;
+    }
+    m_Age = new int(*p.m_Age);//深拷贝
+    //返回对象自身
+    return *this;
+}
+```
+
+#### 4.5.5 关系运算符重载
+
+**作用：**重载关系运算符，可以让两个自定义类型对象进行对比操作
+
+```c++
+bool operator==(Person &p)
+{
+    if(this->m_Name == p.m_Name && this->m_Age == p.m_Age)
+    {
+        return true;
+    }    
+    return false;
+}
+```
+
+#### 4.5.6 函数调用运算符重载
+
+- 函数调用运算符()也可以重载
+- 也称为仿函数
+- 仿函数没有固定写法，非常灵活
+
+```c++
+class MyPrint
+{
+public:
+    //重载函数调用运算符
+    void operator()(string test)
+    {
+        cout << test << endl;
+    }
+};
+void test01()
+{
+    MyPrint myPrint;
+    myPrint("Hello world");//由于使用非常类似函数调用，因此称为仿函数 
+}
+//仿函数非常灵活，没有固定写法
+class MyAdd
+{
+public:
+    int operator()(int num1, int num2)
+        return num1 + num2;
+};
+void test02()
+{
+    MyAdd myAdd;
+    int ret = myAdd(10, 10);
+    cout << "ret =  " << ret << endl;
+    //匿名函数对象
+    cout << MyAdd()(100, 100) << endl;
+}
+```
+
+---
+
+### 4.6 继承 
+
+**继承是面向对象的三大特性之一**
+
+#### 4.6.1 继承的基本语法
+
+**语法：**`class 子类 ：继承方式 父类`
+
+子类也称为派生类，父类也称为基类
+
+```c++
+class BasePage
+{};
+class Java:public BasePage
+{
+public:
+    void content(){}
+};//减少重复代码
+```
+
+#### 4.6.2 继承方式
+
+继承方式一共有有三种：
+
+- 公共继承 :public
+
+  父类public还是public，protected还是protected
+
+- 保护继承 :protected
+
+  父类中public,protected，都是protected
+
+- 私有继承 :private
+
+  父类中public,protected,都是private
+
+父类中private子类都不可以访问
+
+#### 4.6.3 继承中的对象模型
+
+**问题:** 从父类继承过来的成员，哪些属于子类对象中？
+
+父类中所有非静态成员属性都会被子类继承下去
+
+父类中私有成员属性，是被编译器隐藏了，因此访问不到，但是确实继承了
+
+```cmd
+//vs开发人员命令提示符
+> cl /d1 reportSingleClassLayout类名 文件名
+//打印对象模型
+```
+
+#### 4.6.4 继承中构造和析构顺序
+
+问题：先有父类还是先有子类
+
+先父类构造，再子类构造
+
+先子类析构，再父类析构，与构造顺序相反
+
+#### 4.6.5 继承同名成员处理方式
+
+- 访问子类同名成员 直接访问即可
+
+- 访问父类同名成员 加作用域
+
+- 如果子类中出现了和父类中同名的函数，子类中的同名成员会隐藏掉父类中所有的同名成员函数 ，需要加作用域才能访问到
+
+`a.Base::func();`
+
+#### 4.6.6 继承中同名的静态成员处理方式
+
+与非静态处理方式一致
+
+注意：通过类名访问
+
+```c++
+Son::m_a;
+son::Base::m_a;//第一个::表示通过类名访问，第二个::表示访问父类作用域
+```
+
+#### 4.6.7 多继承语法
+
+语法：`class 子类 ：继承方式 父类1，继承方式 父类2...`
+
+多继承可能会引发父类中出现同名成员，需要通过加作用域方式访问
+
+实际开发中不建议使用多继承
+
+#### 4.6.8 菱形继承
+
+概念：
+
+两个派生类继承同一个基类
+
+又有某个类同时继承两个派生类
+
+这种继承被称为菱形继承，又称钻石继承
+
+利用虚继承，解决菱形继承的问题，在继承之前加上关键字virtual变为虚继承，最大的类称为虚基类
+
+```c++
+class b;
+class c;
+class a : virtual public b, :virtual public c;
+//vbptr: virtual base pointer,指向vbtable
+```
+
+### 4.7 多态
+
+分为两类
+
+- 静态：函数重载和运算符重载
+- 动态：派生类和虚函数实现运行时多态
+
+区别：
+
+- 静态函数地址早绑定，-编译阶段确定
+- 动态函数地址晚绑定，-运行阶段确定
+
+---
+
+//
 
